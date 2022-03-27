@@ -7,6 +7,7 @@ import sound from "../sound/ping.mp3";
 let currentHandsUp = false;
 let prevHandsUp = false;
 let camera = null;
+const URL = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/";
 
 const ping = new Audio(sound);
 
@@ -15,36 +16,49 @@ function Webcam() {
   const webcamRef = useRef(null);
 
   useEffect(() => {
+    //Plays sound and prints message when hands are raised
     const wellDone = () => {
       setMessage("Good job!");
-
       ping.play();
     };
+    /// Checks if hands are up
+    const checkIfHandsAreUp = (landMarks) => {
+      return (
+        landMarks[9].y > landMarks[13].y &&
+        landMarks[10].y > landMarks[14].y &&
+        landMarks[14].y > landMarks[16].y &&
+        landMarks[13].y > landMarks[15].y
+      );
+    };
+
+    // Checks if hand state changed - if they were lowered or raised back up
+    const didHandStateChange = () => {
+      if (currentHandsUp !== prevHandsUp) return true;
+      return false;
+    };
+    // Applies correct events, when hands are raised or lowered
+    const setCorrectEvents = () => {
+      if (prevHandsUp) {
+        wellDone();
+      } else {
+        setMessage("Just put your hands up!");
+      }
+    };
+
     function onResults(results) {
       if (!results.poseLandmarks) return;
 
-      if (
-        results.poseLandmarks[9].y > results.poseLandmarks[13].y &&
-        results.poseLandmarks[10].y > results.poseLandmarks[14].y &&
-        results.poseLandmarks[14].y > results.poseLandmarks[16].y &&
-        results.poseLandmarks[13].y > results.poseLandmarks[15].y
-      ) {
-        currentHandsUp = true;
-      } else {
-        currentHandsUp = false;
-      }
+      currentHandsUp = checkIfHandsAreUp(results.poseLandmarks);
 
-      if (currentHandsUp !== prevHandsUp) {
+      if (didHandStateChange()) {
         prevHandsUp = !prevHandsUp;
-
-        if (prevHandsUp) wellDone();
-        if (!prevHandsUp) setMessage("Just put your hands up!");
+        setCorrectEvents(); // if hands are up plays sound and prints message, if hands are down prints message
       }
     }
 
     const pose = new Pose({
       locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+        return `${URL}${file}`;
       },
     });
     pose.setOptions({
